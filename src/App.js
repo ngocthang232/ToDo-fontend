@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import Board from './components/Board';
 import Login from './components/Login';
@@ -12,6 +12,20 @@ function App() {
   const [currentBoard, setCurrentBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
+
+  const fetchBoards = useCallback(async () => {
+    try {
+      const data = await getBoards();
+      setBoards(data);
+      if (data.length > 0 && !currentBoard) {
+        setCurrentBoard(data[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching boards:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentBoard]);
 
   useEffect(() => {
     // Check if user is logged in
@@ -30,29 +44,23 @@ function App() {
     } else {
       setLoading(false);
     }
-  }, []);
-
-  const fetchBoards = async () => {
-    try {
-      const data = await getBoards();
-      setBoards(data);
-      if (data.length > 0 && !currentBoard) {
-        setCurrentBoard(data[0]);
-      }
-    } catch (error) {
-      console.error('Error fetching boards:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchBoards]);
 
   const handleLogin = (userData) => {
     setUser(userData);
+    const token = localStorage.getItem('token');
+    if (token) {
+      socketService.connect(token);
+    }
     fetchBoards();
   };
 
   const handleRegister = (userData) => {
     setUser(userData);
+    const token = localStorage.getItem('token');
+    if (token) {
+      socketService.connect(token);
+    }
     fetchBoards();
   };
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import SortableList from './SortableList';
 import { getLists, createList, updateListPositions } from '../services/api';
 import socketService from '../services/socketService';
@@ -17,6 +17,18 @@ const Board = ({ boardId }) => {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const fetchLists = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getLists(boardId);
+      setLists(data);
+    } catch (error) {
+      console.error('Error fetching lists:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [boardId]);
 
   useEffect(() => {
     if (boardId) {
@@ -55,19 +67,7 @@ const Board = ({ boardId }) => {
         socketService.offListDeleted(handleListDeleted);
       };
     }
-  }, [boardId]);
-
-  const fetchLists = async () => {
-    try {
-      setLoading(true);
-      const data = await getLists(boardId);
-      setLists(data);
-    } catch (error) {
-      console.error('Error fetching lists:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [boardId, fetchLists]);
 
   const [listErrors, setListErrors] = useState({});
 

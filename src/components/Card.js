@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { updateCard, deleteCard, getUsers, getCardLabels, createCardLabel, deleteCardLabel, getCardAttachments, uploadCardAttachment, deleteCardAttachment } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { updateCard, deleteCard, getUsers, getCardLabels, createCardLabel, deleteCardLabel, getCardAttachments, uploadCardAttachment } from '../services/api';
 import { MoreVertical, Edit3, Trash2, X, Calendar, Tag, Paperclip, Download, File } from 'lucide-react';
 import socketService from '../services/socketService';
 
@@ -21,38 +21,38 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
   const [newLabelColor, setNewLabelColor] = useState('#3B82F6');
   const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-    fetchLabels();
-    fetchAttachments();
-  }, [card.id]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const usersData = await getUsers();
       setUsers(usersData);
     } catch (error) {
       console.error('Error fetching users:', error);
     }
-  };
+  }, []);
 
-  const fetchLabels = async () => {
+  const fetchLabels = useCallback(async () => {
     try {
       const labelsData = await getCardLabels(card.id);
       setLabels(labelsData);
     } catch (error) {
       console.error('Error fetching labels:', error);
     }
-  };
+  }, [card.id]);
 
-  const fetchAttachments = async () => {
+  const fetchAttachments = useCallback(async () => {
     try {
       const attachmentsData = await getCardAttachments(card.id);
       setAttachments(attachmentsData);
     } catch (error) {
       console.error('Error fetching attachments:', error);
     }
-  };
+  }, [card.id]);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchLabels();
+    fetchAttachments();
+  }, [card.id, fetchUsers, fetchLabels, fetchAttachments]);
 
   const validateCard = () => {
     const newErrors = {};

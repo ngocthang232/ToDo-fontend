@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Card from './Card';
-import { getCards, createCard, deleteList } from '../services/api';
+import { getCards, createCard, deleteList, updateCard } from '../services/api';
 import { X } from "lucide-react";
+import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 const ListExpanded = ({ list, onClose, onDelete }) => {
   const [cards, setCards] = useState([]);
@@ -11,11 +13,7 @@ const ListExpanded = ({ list, onClose, onDelete }) => {
   const [newCardDescription, setNewCardDescription] = useState('');
   const [newCardStatus, setNewCardStatus] = useState('To Do');
 
-  useEffect(() => {
-    fetchCards();
-  }, [list.id]);
-
-  const fetchCards = async () => {
+  const fetchCards = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getCards(list.id);
@@ -25,7 +23,11 @@ const ListExpanded = ({ list, onClose, onDelete }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [list.id]);
+
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
 
   const validateCardForm = () => {
     if (!newCardTitle.trim()) {
@@ -91,6 +93,58 @@ const ListExpanded = ({ list, onClose, onDelete }) => {
     return cards.filter((card) => card.status === status);
   };
 
+  // DnD helpers
+  const DroppableColumn = ({ status, className, children }) => {
+    const { setNodeRef, isOver } = useDroppable({ id: `col-${status}`, data: { status } });
+    return (
+      <div ref={setNodeRef} className={className} style={{ outline: isOver ? '2px dashed #3b82f6' : 'none' }}>
+        {children}
+      </div>
+    );
+  };
+
+  const DraggableCard = ({ card, children }) => {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `card-${card.id}`, data: { card } });
+    const style = {
+      transform: transform ? CSS.Translate.toString(transform) : undefined,
+      opacity: isDragging ? 0.6 : 1
+    };
+    return (
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        {children}
+      </div>
+    );
+  };
+
+  const handleDragEnd = async (event) => {
+    const draggedCard = event?.active?.data?.current?.card;
+    const overStatus = event?.over?.data?.current?.status;
+    if (!draggedCard || !overStatus) return;
+
+    if (draggedCard.status === overStatus) return;
+
+    try {
+      // Optimistic update
+      setCards(prev => prev.map(c => c.id === draggedCard.id ? { ...c, status: overStatus } : c));
+
+      await updateCard(
+        draggedCard.id,
+        draggedCard.title,
+        draggedCard.description,
+        overStatus,
+        draggedCard.assigned_to,
+        draggedCard.position,
+        null,
+        draggedCard.due_date
+      );
+    } catch (e) {
+      // Revert on error
+      setCards(prev => prev.map(c => c.id === draggedCard.id ? { ...c, status: draggedCard.status } : c));
+      console.error('Failed to update card status:', e);
+      alert('Failed to update card status');
+    }
+  };
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -131,9 +185,10 @@ const ListExpanded = ({ list, onClose, onDelete }) => {
         </div>
 
         {/* Columns */}
+        <DndContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-h-[50vh]">
           {/* To Do */}
-          <div className="bg-gray-50 rounded-lg p-4 border-t-4 border-gray-400">
+          <DroppableColumn status="To Do" className="bg-gray-50 rounded-lg p-4 border-t-4 border-gray-400">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-800">To Do</h3>
               <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs">
@@ -142,18 +197,19 @@ const ListExpanded = ({ list, onClose, onDelete }) => {
             </div>
             <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-2">
               {getCardsByStatus('To Do').map((card) => (
-                <Card
-                  key={card.id}
-                  card={card}
-                  onDelete={() => handleDeleteCard(card.id)}
-                  onUpdate={handleCardUpdate}
-                />
+                <DraggableCard key={card.id} card={card}>
+                  <Card
+                    card={card}
+                    onDelete={() => handleDeleteCard(card.id)}
+                    onUpdate={handleCardUpdate}
+                  />
+                </DraggableCard>
               ))}
             </div>
-          </div>
+          </DroppableColumn>
 
           {/* In Progress */}
-          <div className="bg-yellow-50 rounded-lg p-4 border-t-4 border-yellow-400">
+          <DroppableColumn status="In Progress" className="bg-yellow-50 rounded-lg p-4 border-t-4 border-yellow-400">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-800">In Progress</h3>
               <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full text-xs">
@@ -162,18 +218,19 @@ const ListExpanded = ({ list, onClose, onDelete }) => {
             </div>
             <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-2">
               {getCardsByStatus('In Progress').map((card) => (
-                <Card
-                  key={card.id}
-                  card={card}
-                  onDelete={() => handleDeleteCard(card.id)}
-                  onUpdate={handleCardUpdate}
-                />
+                <DraggableCard key={card.id} card={card}>
+                  <Card
+                    card={card}
+                    onDelete={() => handleDeleteCard(card.id)}
+                    onUpdate={handleCardUpdate}
+                  />
+                </DraggableCard>
               ))}
             </div>
-          </div>
+          </DroppableColumn>
 
           {/* Done */}
-          <div className="bg-green-50 rounded-lg p-4 border-t-4 border-green-400">
+          <DroppableColumn status="Done" className="bg-green-50 rounded-lg p-4 border-t-4 border-green-400">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-800">Done</h3>
               <span className="bg-green-200 text-green-800 px-2 py-1 rounded-full text-xs">
@@ -182,16 +239,18 @@ const ListExpanded = ({ list, onClose, onDelete }) => {
             </div>
             <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-2">
               {getCardsByStatus('Done').map((card) => (
-                <Card
-                  key={card.id}
-                  card={card}
-                  onDelete={() => handleDeleteCard(card.id)}
-                  onUpdate={handleCardUpdate}
-                />
+                <DraggableCard key={card.id} card={card}>
+                  <Card
+                    card={card}
+                    onDelete={() => handleDeleteCard(card.id)}
+                    onUpdate={handleCardUpdate}
+                  />
+                </DraggableCard>
               ))}
             </div>
-          </div>
+          </DroppableColumn>
         </div>
+        </DndContext>
 
         {/* Add Card Form */}
         {showAddCard && (

@@ -5,6 +5,9 @@ import socketService from '../services/socketService';
 const OnlineUsers = ({ boardId }) => {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+  })();
 
   useEffect(() => {
     if (!boardId) return;
@@ -14,6 +17,7 @@ const OnlineUsers = ({ boardId }) => {
 
     // Event listeners
     const handleUserJoined = (user) => {
+      if (user.userId === currentUser.id) return; // ignore self
       setOnlineUsers(prev => {
         const exists = prev.find(u => u.userId === user.userId);
         if (!exists) {
@@ -29,6 +33,7 @@ const OnlineUsers = ({ boardId }) => {
 
     const handleConnect = () => {
       setIsConnected(true);
+      socketService.joinBoard(boardId);
     };
 
     const handleDisconnect = () => {
@@ -36,9 +41,16 @@ const OnlineUsers = ({ boardId }) => {
       setOnlineUsers([]);
     };
 
+    const handleOnlineUsers = (payload) => {
+      if (!payload || payload.boardId !== boardId) return;
+      const others = (payload.users || []).filter(u => u.userId !== currentUser.id);
+      setOnlineUsers(others);
+    };
+
     // Set up listeners
     socketService.onUserJoined(handleUserJoined);
     socketService.onUserLeft(handleUserLeft);
+    socketService.onOnlineUsers(handleOnlineUsers);
     socketService.socket?.on('connect', handleConnect);
     socketService.socket?.on('disconnect', handleDisconnect);
 
@@ -46,11 +58,12 @@ const OnlineUsers = ({ boardId }) => {
     return () => {
       socketService.offUserJoined(handleUserJoined);
       socketService.offUserLeft(handleUserLeft);
+      socketService.offOnlineUsers(handleOnlineUsers);
       socketService.socket?.off('connect', handleConnect);
       socketService.socket?.off('disconnect', handleDisconnect);
       socketService.leaveBoard(boardId);
     };
-  }, [boardId]);
+  }, [boardId, currentUser.id]);
 
   if (!isConnected) {
     return (
@@ -61,8 +74,12 @@ const OnlineUsers = ({ boardId }) => {
     );
   }
 
+  const usernames = [currentUser?.username, ...onlineUsers.map(u => u.username)].filter(Boolean);
+  const namesPreview = usernames.slice(0, 3).join(', ');
+  const extra = usernames.length > 3 ? `, +${usernames.length - 3}` : '';
+
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center space-x-2" title={`${namesPreview}${extra}`}>
       <div className="flex items-center space-x-1">
         <Wifi size={16} className="text-green-500" />
         <Users size={16} className="text-gray-600" />

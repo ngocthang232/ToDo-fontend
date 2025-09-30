@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { search } from '../services/api';
-import { Search as SearchIcon, X, Calendar, Tag, User, FileText } from 'lucide-react';
+import { Search as SearchIcon, X, User, FileText } from 'lucide-react';
 
 const Search = ({ isOpen, onClose, onCardClick, onBoardClick }) => {
   const [query, setQuery] = useState('');

@@ -4,15 +4,22 @@ import socketService from '../services/socketService';
 
 const OnlineUsersList = ({ boardId, isOpen, onClose }) => {
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(socketService.isConnected);
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+  })();
 
   useEffect(() => {
     if (!isOpen || !boardId) return;
 
-    // Join board room
+    // Reflect current connection immediately (in case we subscribed after connect)
+    setIsConnected(socketService.isConnected);
+
+    // Join board room (server will emit initial online list)
     socketService.joinBoard(boardId);
 
     const handleUserJoined = (user) => {
+      if (user.userId === currentUser.id) return; // ignore self
       setOnlineUsers(prev => {
         const exists = prev.find(u => u.userId === user.userId);
         if (!exists) return [...prev, user];
@@ -26,7 +33,8 @@ const OnlineUsersList = ({ boardId, isOpen, onClose }) => {
 
     const handleOnlineUsers = (payload) => {
       if (!payload || payload.boardId !== boardId) return;
-      setOnlineUsers(payload.users || []);
+      const others = (payload.users || []).filter(u => u.userId !== currentUser.id);
+      setOnlineUsers(others);
     };
 
     const handleConnect = () => setIsConnected(true);

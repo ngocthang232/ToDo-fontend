@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import SortableCard from './SortableCard';
@@ -23,6 +23,15 @@ const List = ({ list, onDelete, dragListeners }) => {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  const fetchCards = useCallback(async () => {
+    try {
+      const data = await getCards(list.id);
+      setCards(data);
+    } catch (error) {
+      console.error('Error fetching cards:', error);
+    }
+  }, [list.id]);
 
   useEffect(() => {
     fetchCards();
@@ -59,16 +68,7 @@ const List = ({ list, onDelete, dragListeners }) => {
       socketService.offCardUpdated(handleCardUpdated);
       socketService.offCardDeleted(handleCardDeleted);
     };
-  }, [list.id]);
-
-  const fetchCards = async () => {
-    try {
-      const data = await getCards(list.id);
-      setCards(data);
-    } catch (error) {
-      console.error('Error fetching cards:', error);
-    }
-  };
+  }, [list.id, fetchCards]);
 
   const validateCardForm = () => {
     const newErrors = {};
