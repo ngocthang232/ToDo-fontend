@@ -1,14 +1,14 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build"
-      }
-    }
-  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
+  "installCommand": "npm install",
+  "framework": "create-react-app",
+  "env": {
+    "REACT_APP_API_BASE_URL": "https://todo-backend-ja58.onrender.com/api",
+    "REACT_APP_SOCKET_URL": "https://todo-backend-ja58.onrender.com",
+    "REACT_APP_ENV": "production"
+  },
   "routes": [
     {
       "src": "/static/(.*)",
@@ -18,10 +18,5 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "REACT_APP_API_BASE_URL": "https://your-backend-domain.onrender.com/api",
-    "REACT_APP_SOCKET_URL": "https://your-backend-domain.onrender.com",
-    "REACT_APP_ENV": "production"
-  }
+  ]
 }
