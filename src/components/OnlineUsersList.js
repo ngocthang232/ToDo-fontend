@@ -53,12 +53,17 @@ const OnlineUsersList = ({ boardId, isOpen, onClose }) => {
       socketService.offOnlineUsers(handleOnlineUsers);
       socketService.leaveBoard(boardId);
     };
-  }, [isOpen, boardId]);
+  }, [isOpen, boardId, currentUser.id]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4"
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md mx-4">
         <div className="flex justify-between items-center border-b px-6 py-4">
           <h2 className="text-lg font-semibold flex items-center">

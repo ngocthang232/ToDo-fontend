@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { updateCard, deleteCard, getUsers, getCardLabels, createCardLabel, deleteCardLabel, getCardAttachments, uploadCardAttachment } from '../services/api';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import '../css/Card.css';
+import { updateCard, deleteCard, getUsers, getCardLabels, createCardLabel, getCardAttachments, uploadCardAttachment } from '../services/api';
 import { MoreVertical, Edit3, Trash2, X, Calendar, Tag, Paperclip, Download, File } from 'lucide-react';
 import socketService from '../services/socketService';
 
@@ -20,6 +21,11 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
   const [newLabel, setNewLabel] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#3B82F6');
   const [uploading, setUploading] = useState(false);
+  const [labelErrors, setLabelErrors] = useState({});
+  
+  const menuRef = useRef(null);
+  const labelFormRef = useRef(null);
+  const attachmentFormRef = useRef(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -53,6 +59,28 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
     fetchLabels();
     fetchAttachments();
   }, [card.id, fetchUsers, fetchLabels, fetchAttachments]);
+
+    // Handle click outside to close popups
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showMenu && menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+      if (showLabelForm && labelFormRef.current && !labelFormRef.current.contains(event.target)) {
+        setShowLabelForm(false);
+        setNewLabel('');
+        setNewLabelColor('#0079bf');
+        setLabelErrors({});
+      }
+      if (showAttachmentForm && attachmentFormRef.current && !attachmentFormRef.current.contains(event.target)) {
+        setShowAttachmentForm(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu, showLabelForm, showAttachmentForm]);
 
   const validateCard = () => {
     const newErrors = {};
@@ -127,18 +155,39 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
     }
   };
 
+    const validateLabelForm = () => {
+    const newErrors = {};
+    
+    if (newLabel.trim() && newLabel.trim().length > 50) {
+      newErrors.text = 'Label text must be less than 50 characters';
+    }
+    
+    setLabelErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  const handleLabelInputChange = (value) => {
+    setNewLabel(value);
+    if (labelErrors.text) {
+      setLabelErrors({ ...labelErrors, text: '' });
+    }
+  };
+
   const handleAddLabel = async () => {
+    if (!validateLabelForm()) {
     if (!newLabel.trim()) return;
+      return;
+    }
 
     try {
-      await createCardLabel(card.id, newLabel.trim(), newLabelColor);
+      await createCardLabel(card.id, newLabel.trim() || '', newLabelColor);
       setNewLabel('');
       setNewLabelColor('#3B82F6');
+      setLabelErrors({});
       setShowLabelForm(false);
       fetchLabels();
     } catch (error) {
       console.error('Error adding label:', error);
-      alert('Error adding label: ' + (error.response?.data?.error || 'Unknown error'));
+      setLabelErrors({ general: 'Error adding label: ' + (error.response?.data?.error || 'Unknown error') });
     }
   };
 
@@ -166,21 +215,14 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
     }
   };
 
-  const handleDeleteLabel = async (labelId) => {
-    try {
-      await deleteCardLabel(labelId);
-      fetchLabels();
-    } catch (error) {
-      console.error('Error deleting label:', error);
-    }
-  };
+  // Đã xóa handleDeleteLabel vì chưa dùng
 
   // ==========================
   // Editing Mode
   // ==========================
   if (isEditing) {
     return (
-      <div className="bg-white rounded-lg p-4 shadow-md border border-gray-200 space-y-2">
+      <div className="card-container space-y-2">
         <textarea
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -254,7 +296,7 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
   // Normal Mode
   // ==========================
   return (
-    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition cursor-pointer group relative">
+  <div className="card-container group relative">
       {/* Drag Handle */}
       {dragListeners && (
         <div
@@ -266,10 +308,10 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
 
       {/* Header: Title + Status + Menu */}
       <div className="flex items-start justify-between mb-2">
-        <h4 className="font-medium text-gray-900 text-sm truncate">{card.title}</h4>
+  <h4 className="card-title">{card.title}</h4>
         <div className="flex items-center gap-2">
           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(card.status)}`}>
-            {card.status}
+            <span className={`card-status ${card.status === 'To Do' ? 'todo' : card.status === 'In Progress' ? 'inprogress' : 'done'}`}>{card.status}</span>
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
@@ -282,6 +324,7 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
 
       {/* Description */}
       {card.description && <p className="text-gray-600 text-xs mb-2">{card.description}</p>}
+  {card.description && <p className="card-description">{card.description}</p>}
 
       {/* Due Date */}
       {card.due_date && (
@@ -290,6 +333,21 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
           {formatDueDate(card.due_date)}
         </div>
       )}
+      {/* Labels */}
+      {labels.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {labels.map((label) => (
+            <span
+              key={label.id}
+              className="card-label"
+              style={{ backgroundColor: label.color }}
+            >
+              {label.label || '•'}
+            </span>
+          ))}
+        </div>
+      )}
+      
 
       {/* Attachments */}
       {attachments.length > 0 && (
@@ -298,7 +356,7 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
             <Paperclip size={12} className="mr-1" /> Attachments ({attachments.length})
           </div>
           {attachments.slice(0, 2).map((att) => (
-            <div key={att.id} className="flex items-center justify-between px-2 py-1 rounded border border-gray-200 bg-gray-50 hover:bg-gray-100 transition">
+            <div key={att.id} className="card-attachment">
               <div className="flex items-center flex-1 min-w-0">
                 <File size={14} className="mr-1 text-gray-500" />
                 <span className="truncate text-xs text-gray-700" title={att.original_name}>{att.original_name}</span>
@@ -321,7 +379,7 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
       <div className="flex justify-between items-center text-xs text-gray-400">
         <span>Created: {formatDate(card.created_at)}</span>
         {card.assigned_to && (
-          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+          <span className="card-assigned">
             {users.find((u) => u.id === card.assigned_to)?.username || 'Unknown'}
           </span>
         )}
@@ -381,10 +439,20 @@ const Card = ({ card, onDelete, onUpdate, dragListeners }) => {
           <input
             type="text"
             value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            placeholder="Label text"
-            className="w-full p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+            onChange={(e) => handleLabelInputChange(e.target.value)}
+            placeholder="Label text (optional)"
+            className={`w-full p-2 border rounded-md text-sm focus:outline-none focus:ring-2 mb-2 ${
+              labelErrors.text 
+                ? 'border-red-500 focus:ring-red-500' 
+                : 'border-gray-300 focus:ring-trello-blue'
+            }`}
           />
+          {labelErrors.text && (
+            <p className="text-sm text-red-600 mb-2">{labelErrors.text}</p>
+          )}
+          {labelErrors.general && (
+            <p className="text-sm text-red-600 mb-2">{labelErrors.general}</p>
+          )}
           <div className="flex flex-wrap gap-1 mb-3">
             {['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'].map((color) => (
               <button

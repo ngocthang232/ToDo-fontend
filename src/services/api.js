@@ -106,9 +106,27 @@ export const getUsers = async () => {
   return response.data;
 };
 
-export const updateUserProfile = async (email, currentPassword, newPassword) => {
-  const response = await api.put('/users/profile', { email, currentPassword, newPassword });
+export const updateUserProfile = async (email, currentPassword, newPassword, avatarUrl) => {
+  const response = await api.put('/users/profile', { email, currentPassword, newPassword, avatarUrl });
   return response.data;
+};
+
+// Upload avatar API
+export const uploadAvatar = async (file) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const token = localStorage.getItem('token');
+  const response = await axios.post(
+    `${API_BASE_URL}/upload-avatar`,
+    formData,
+    {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data.url;
 };
 
 // Board members API

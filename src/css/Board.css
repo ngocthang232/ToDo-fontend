@@ -1,0 +1,73 @@
+/* Container list */
+.trello-list {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* Input thêm list */
+.trello-list input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.trello-list input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.25);
+}
+
+.error-input {
+  border-color: #ef4444 !important; /* red-500 */
+  box-shadow: 0 0 0 2px rgba(239,68,68,0.25) !important;
+}
+
+/* Nút chính */
+.trello-button {
+  background-color: #2563eb;
+  color: white;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: background 0.2s;
+}
+
+.trello-button:hover {
+  background-color: #1d4ed8;
+}
+
+/* Nút phụ */
+.trello-button-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: background 0.2s;
+}
+
+.trello-button-secondary:hover {
+  background-color: #e5e7eb;
+}
+
+/* Nút add list mặc định */
+.add-list-btn {
+  width: 100%;
+  background-color: rgba(255,255,255,0.2);
+  color: white;
+  font-weight: 500;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.add-list-btn:hover {
+  background-color: rgba(255,255,255,0.3);
+}

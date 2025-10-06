@@ -9,6 +9,7 @@ import OnlineUsersList from './OnlineUsersList';
 const Header = ({ user, boards, currentBoard, onBoardChange, onCreateBoard, onLogout, onUserUpdate, onCardClick, onBoardClick }) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [profileData, setProfileData] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showTeamManagement, setShowTeamManagement] = useState(false);
   const [showOnlineUsersList, setShowOnlineUsersList] = useState(false);
@@ -127,7 +128,32 @@ const Header = ({ user, boards, currentBoard, onBoardChange, onCreateBoard, onLo
             {/* User Info & Actions */}
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => setShowUserProfile(true)}
+                onClick={async () => {
+                  try {
+                    const res = await fetch('http://localhost:5000/api/users/profile', {
+                      method: 'GET',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                      }
+                    });
+                    if (res.ok) {
+                      console.log('Profile fetch response status:', res.status);
+                      const data = await res.json();
+                      console.log('Fetched profile data:', data);
+                      setProfileData(data);
+                      setShowUserProfile(true);
+                    } else {
+                      console.log('Profile fetch failed with status:', res.status);
+                      setProfileData(user); // fallback
+                      setShowUserProfile(true);
+                    }
+                  } catch (e) {
+                    console.error('Profile fetch error:', e);
+                    setProfileData(user); // fallback
+                    setShowUserProfile(true);
+                  }
+                }}
                 className="flex items-center text-sm text-gray-700 hover:text-blue-600 px-3 py-1 rounded transition"
               >
                 <UserCircle2 className="mr-1" size={18} />
@@ -221,8 +247,11 @@ const Header = ({ user, boards, currentBoard, onBoardChange, onCreateBoard, onLo
       {/* User Profile Popup */}
       {showUserProfile && (
         <UserProfilePopup
-          user={user}
-          onClose={() => setShowUserProfile(false)}
+          user={profileData || user}
+          onClose={() => {
+            setShowUserProfile(false);
+            setProfileData(null);
+          }}
           onUpdate={onUserUpdate}
         />
       )}

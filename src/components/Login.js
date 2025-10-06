@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import GoogleLoginButton from './GoogleLoginButton';
 import { login } from '../services/api';
 import { User, Lock } from 'lucide-react'; // icon
 
@@ -139,6 +140,36 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
+
+        {/* Google Login Button */}
+        <div className="mt-6 flex flex-col items-center">
+          <span className="text-gray-500 mb-2">or</span>
+          <GoogleLoginButton
+            onSuccess={async (credentialResponse) => {
+              try {
+                // Gửi credentialResponse.credential về backend để xác thực
+                const res = await fetch('http://localhost:5000/api/auth/google', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ token: credentialResponse.credential })
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  localStorage.setItem('token', data.token);
+                  localStorage.setItem('user', JSON.stringify(data.user));
+                  onLogin(data.user);
+                } else {
+                  setErrors({ general: 'Google login failed' });
+                }
+              } catch (err) {
+                setErrors({ general: 'Google login error' });
+              }
+            }}
+            onError={() => setErrors({ general: 'Google login error' })}
+          />
+        </div>
 
         {/* Switch to register */}
         <p className="mt-6 text-center text-sm text-gray-600">

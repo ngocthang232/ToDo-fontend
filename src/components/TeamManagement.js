@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getUsers, getBoardMembers, addBoardMember, removeBoardMember, register } from '../services/api';
 import { Users, UserPlus, UserMinus, Crown, User } from 'lucide-react';
 
@@ -14,23 +14,7 @@ const TeamManagement = ({ boardId, isOpen, onClose }) => {
   const [newPassword, setNewPassword] = useState('');
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchUsers();
-      fetchMembers();
-    }
-  }, [isOpen, boardId]);
-
-  const fetchUsers = async () => {
-    try {
-      const usersData = await getUsers();
-      setUsers(usersData);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
-  };
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       setLoading(true);
       const membersData = await getBoardMembers(boardId);
@@ -40,6 +24,22 @@ const TeamManagement = ({ boardId, isOpen, onClose }) => {
       setError('Error loading team members');
     } finally {
       setLoading(false);
+    }
+  }, [boardId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchUsers();
+      fetchMembers();
+    }
+  }, [isOpen, boardId, fetchMembers]);
+
+  const fetchUsers = async () => {
+    try {
+      const usersData = await getUsers();
+      setUsers(usersData);
+    } catch (error) {
+      console.error('Error fetching users:', error);
     }
   };
 
@@ -111,7 +111,12 @@ const TeamManagement = ({ boardId, isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-96 overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
